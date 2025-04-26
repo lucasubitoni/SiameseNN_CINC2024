@@ -5,7 +5,6 @@ import tensorflow as tf
 from tensorflow.python.keras.utils import layer_utils
 from tensorflow.python.keras.utils.layer_utils import get_source_inputs
 
-#generali
 
 def find_n_windows(l_signal,w_window=2400,Maxoverlap=0.5):
     n_windows=np.ceil(l_signal/w_window)
@@ -74,8 +73,6 @@ def standardizzaPerElemento(X):
 
 
 def StandardizzaERiorganizzaTrain(X_train, y_train, segnali, scaler):
-    
-    #questa parte è da mettere a posto
 
     #GestAge
     GestAge_train = X_train[:, 0].reshape(-1, 1)

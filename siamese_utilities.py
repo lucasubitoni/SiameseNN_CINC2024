@@ -62,8 +62,7 @@ def extract_first_element(row, name):
 
 
 
-# This function is fast but consumes A LOT of memory. Do not run on laptop (maybe on server? TODO: test)
-
+# This function is fast but consumes A LOT of memory. Do not run on laptop (use the server)
 def generate_triplets(df, limite_giorni):
 
     indices = np.array(df['Index'], dtype=np.int16)
@@ -72,15 +71,15 @@ def generate_triplets(df, limite_giorni):
     
     df['GA'] = df['GA'].astype(np.int16)
 
-    # Generate all permutations of indices (order matters) esploderà la memoria? testare -> sì esplode
+    # Generate all permutations of indices (order matters)
     combos = np.array(list(permutations(indices, 3)))
 
-    # Filter combinations based on the condition1 -> ++- o --+ (prende queste)
+    # Filter combinations based on the condition1 -> ++- or --+ (takes this)
     mask1 = (classes[combos[:, 0]] == classes[combos[:, 1]]) & (classes[combos[:, 0]] != classes[combos[:, 2]])
 
     combos = combos[mask1]
 
-    # Filter combinations based on the condition2 -> similar GA (prende queste)
+    # Filter combinations based on the condition2 -> similar GA (takes this)
     mask2 = (np.abs(df['GA'][combos[:, 0]] - df['GA'][combos[:, 1]]) < limite_giorni) and (np.abs(df['GA'][combos[:, 0]] - df['GA'][combos[:, 2]]) < limite_giorni)
 
     triplets = combos[mask2]

@@ -26,7 +26,7 @@ from sklearn.utils import shuffle
 class SiameseNetwork:
 
     """
-    Classe che serve a creare la rete siamese
+    Class to create the siamese neural network
     """
 
     # Initialization of the Siamese Network
@@ -146,22 +146,20 @@ class SiameseNetwork:
                 # Inside the batch I made the combinations, now INSIDE the combinations I extract OTHER BATCHES
                 if len(BatchDataTuplesAll) > self.maxBatch:
 
-                    # Qui dentro rispezzo le combinazioni all'interno del dataset in minibatch.
-                    # Richiamo la rete in inference mode (sig_1,2,3 sono i segnali nel formato che la rete siamese vuole)
-                    # Scorro il batch in blocchi di dimensione max_batch (il max che ci sta nel computer) uno alla volta
-                    # Sig_1,2,3 (A,P,N in teoria) sono dei tensori quindi contengono più segnali
-                    # Sono valide le distanze sopra una sogila, ossia quelle difficili per la rete che è stata chiamata in inferenza
-                    # Alla fine appendo alla lista BatchDataTuples solo i segnali validi
-                    # E poi non vogliamo buttare via i dati e quindi facciamo un test sulle distanze con i restanti che possono esser emeno di maxbatch
+                    # Here I process the combinations within the dataset using minibatches.
+                    # I call the network in inference mode (sig_1, sig_2, sig_3 are the signals formatted as expected by the Siamese network).
+                    # I iterate over the batch in blocks of size max_batch (the largest size that fits in memory), one block at a time.
+                    # sig_1, sig_2, sig_3 (conceptually A, P, N) are tensors, each containing multiple signals.
+                    # Only distances above a certain threshold (i.e., the hard examples for the network) are considered valid.
+                    # Valid signals are appended to the BatchDataTuples list.
+                    # To avoid discarding data, a final check on the remaining signals (which may be fewer than max_batch) is also performed.
 
                     esci = 0
 
-                    #create the tensor which will be sliced later on
-      
+                    # create the tensor which will be sliced later on
                     DatiTrain.createTensor(self.GA) 
   
-                    #triplet mining: calcolo le distanze di tutte le triplette e prendo solo quelle che hanno distanza > 0
-                    #TODO vettorizzare per efficienza >> omoindrot.github.io/triplet-loss (loss di TUTTE le triplette del batch con un unico tensore: non mi ci sta in memoria!)
+                    #triplet mining: compute the distances and keep only those > 0
                     start_timeMining = time.time()
                     ministeps = int(np.floor(np.min([LimitComb,len(BatchDataTuplesAll)//self.maxBatch])))
                     BatchDataTuples = []
@@ -173,7 +171,7 @@ class SiameseNetwork:
                         valid =  ap_distance - an_distance > soglia
                         BatchDataTuples.extend([BatchDataTuplesAll[i*self.maxBatch+j] for j in range(self.maxBatch) if valid[j]])
 
-                    # il resto   
+                    # Process remaining combinations if total number is not divisible by batch size 
                     if not(LimitComb<np.inf):
                         if len(BatchDataTuplesAll) % self.maxBatch != 0:   
                        
@@ -191,17 +189,17 @@ class SiameseNetwork:
                     if Measure_time:
                         start_timeTraining = time.time()
 
-                    #non sta nella memoria tutto assieme!
-                    # Steps mi dice quanti giri fare nella lista DataTuples
+                    # Handle training on minibatches to avoid memory overflow
+                    # Steps tells us how many "loops" to do in the DataTuples list
                     steps = len(BatchDataTuples)//self.maxBatch
 
-                    # Se non ci sono triplette difficili per la rete allora la loss la mettiamo a zero
+                    # If no hard triplets are found, set loss to zero
                     if steps == 0:
-                        loss_step = tf.cast(0.0, tf.float32) #tutte già giuste
+                        loss_step = tf.cast(0.0, tf.float32) # All correct
                     else:
                         loss_step = np.empty(steps)
                         for step in range(steps):
-                            # Tra i segnali "difficli", ossia quelli validi, tiro fuori un mini-batch di dimensione maxBatch per allenare la rete
+                            # Among difficult signals (i.e. the valid ones), I take a mini-batch of maxBatch size to train the net
                             start_index = step * self.maxBatch
                             end_index = (step + 1) * self.maxBatch
                             BatchDataTuplesStep = BatchDataTuples[start_index:end_index]
@@ -217,7 +215,7 @@ class SiameseNetwork:
                         print('NAN LOSS!!!')
                         esci = 1
                     else:    
-                        # La media si aggiorna iterativamente
+                        # The mean is iteratively updated
                         current_lossTrain = current_lossTrain * (batch_index/(batch_index+1)) + (loss_step/(batch_index+1))
                 else:
                     esci = 1
@@ -232,7 +230,7 @@ class SiameseNetwork:
             if Measure_time:
                 print("T0: {}, T1: {}, T2: {}".format(T[0],T[1],T[2]))
 
-            #fine epoca ------------------------------------------------------- 
+            # END EPOCH  ------------------------------------------------------- 
             Measure_time = False #solo per la prima epoca
 
             if esci:
@@ -253,7 +251,7 @@ class SiameseNetwork:
 
 
             if (np.isnan(self.EpochLossTrain).any()) or (np.isnan(TrainDistance).any()) or (np.isnan(ValDistance).any()):
-                #network is not networking
+                # Network is not networking
                 self.stato = 0
                 print('There is a problem!!')
                 return
@@ -282,7 +280,7 @@ class SiameseNetwork:
             elif current_lossTrain < 0.17:
                 soglia = -self.margin/2
                  
-            # Resetto le metriche
+            # Reset metrics
             current_lossTrain = 0 
 
         # Evaluating the accuracy of the KNN with a fixed N=3 before resetting the model to its best weights
@@ -290,11 +288,9 @@ class SiameseNetwork:
         self.ValAccuracy = KNNAccuracy(DatiTrain_df, DatiValidation_df, self, self.n_neighbors, Test=False)
 
         # If I want to save the best model and reset it to the best one when I finish training 
-        # (questa cosa penso che serva se voglio stoppare e far ripartire il training)
         if reset_best_weights:
-            # Carico i pesi migliori
+            # Load best weights
             self.model.load_weights("BestWeightsV.h5")
-            # Non ho capito cosa cambia tra ModelloSiamese.h5 e BestWeightsV.h5
             if save_model:
                 try:
                     self.model.save("ModelloSiamese.h5")
@@ -357,13 +353,11 @@ class SiameseNetwork:
     def AvgClassDistance(self, DatiValidation_obj):
 
         """
-        This function computes the average class distance (Non ho capito come funziona)
-        Misura di qualità indipendente dalle triplette che scegliamo. 
-        Questo perchè facciamo triplet mining e scegliamo iterativamente gli esempi più difficili e quindi la loss non è un buon indicatore
+        This function computes the average class distance
         """
 
-        # Proietto i dati di validation (in ordine di riga, non in base all'indice)
-        PR = self.ProjectData(DatiValidation_obj.Data_frame_orig) #numpy array
+        # Project validation data (based on row, not on index)
+        PR = self.ProjectData(DatiValidation_obj.Data_frame_orig) # --> numpy array
  
         GenerateCoupleListDiff, GenerateCoupleListSame = DatiValidation_obj.GenerateCoupleList(reset_index = True)
 
@@ -377,7 +371,7 @@ class SiameseNetwork:
 
 # ==============================================================================================================================================  
 
-    #per interi dataFrame
+    
     def ProjectData(self,dfScaled):
        
         EmbdeddingModel = self.model.get_layer('EmbeddingModel')
@@ -398,9 +392,6 @@ class SiameseNetwork:
 
             for i in range(len(dfScaled)):
 
-                #sig1 = [tf.constant(np.array([dfScaled.iloc[i,j] for j in range(1,(L-1))], dtype=np.float32).T.reshape(2400, L-2), dtype=tf.float32)]
-                #sig1 = tf.stack(sig1)
-                #così usa GA come canale
                 sig1 = [tf.constant(np.array([dfScaled.iloc[i,j] for j in range(0,(L-1))], dtype=np.float32).T.reshape(2400, L-1), dtype=tf.float32)]
                 sig1 = tf.stack(sig1)
                 
@@ -414,7 +405,7 @@ class SiameseNetwork:
     def PlotProjection(self, Data, title, *TestData, type = 'TSNE'):
 
         """
-        Funzione che proietta i dati per visualizzarli. Posso farlo o con PCA (lineare) o con TSNE (non lineare)
+        Function to project the data to visualize them. Type can be PCA (linear) or TSNE (non-linear)
         """
 
         labels = np.array(Data['label'].values).astype('int')
@@ -446,8 +437,8 @@ class SiameseNetwork:
 
 # ==============================================================================================================================================  
     
-    #per singolo segnale (controllare vada ancora bene)
-    #ritorna l'embedding fattio da "EmbdeddingModel" per un singolo segnale (è una dele tre reti della siamese)
+    # For each standalone signal 
+    #Returns the embedding from "EmbeddingModel" for a single signal (one of the three siamese nets)
     def project(self, segnale):
         EmbdeddingModel = self.model.get_layer('model')
         return EmbdeddingModel(segnale)
@@ -457,7 +448,7 @@ class SiameseNetwork:
     def distance(self, sig1, sig2):
 
         """
-        Questa funzione calcola la distanza Euclidea tra gli embedding dei segnali
+        This function computes the euclidean distance between the embeddings of the signals
         """
 
         # Compute euclidean distance
@@ -475,8 +466,7 @@ class SiameseNetwork:
     def _compute_loss(self, data, train = True):
 
         """
-        Questa funzione calcola la triplet loss
-        (La funzione inizia con il trattino perchè è supposta essere un metodo "nascosto", che viene chiamato solo da altre funzioni e non direttamente dall'utente)
+        Function to compute the triplet loss
         """
 
         # The output of the network is a tuple containing the distances between the anchor and the positive example, and the anchor and the negative example.
@@ -501,7 +491,7 @@ class SiameseNetwork:
     def train_step(self, sig_1, sig_2, sig_3):
 
         """
-        Questa funzione fa uno step di train della rete, calcolando la loss, quindi calcolando i gradienti e applicando il gradient descent
+        Function to do a train step of the network: loss computation and gradient propagation
         """
         
         with tf.GradientTape() as tape:
@@ -558,7 +548,7 @@ class SiameseDataset():
     def getSiamaseDataset(self, TupleList, GA):
 
         """
-        Questa funzione viene usata per ottenere i segnali di anchor, positivo e negativo
+        Function to get the anchor, positive and negative signals
         """
 
         # Length of the original dataframe
@@ -601,7 +591,7 @@ class SiameseDataset():
     
 
     # ==============================================================================================================================================    
-    #27/03/2024 - modifica di efficienza in uso memoria GIULIO
+    #27/03/2024 - Efficiency memory modification (GIULIO)
     def createTensor(self, GA):
 
         #create a tensor from the elements of the dataframe. The input to the net will be the combination of three of its slices (APN) on the basis of the combination list
@@ -626,7 +616,7 @@ class SiameseDataset():
              
         self.tensorAll = tensorAll
 
-        #I am using indices to keep track of the position of the signals in the tensor
+        # I am using indices to keep track of the position of the signals in the tensor
         PositionList = [id for id in self.Data_frame_orig.index]
 
         self.PositionList = PositionList
@@ -683,7 +673,7 @@ class SiameseDataset():
     def getSiamaseDatasetNoise(self, TupleList, GA, noise = 0.1):
 
         """
-        Questa funzione introduce del rumore per limitare l'overfitting tramite delle funzioni apposite (vedi in fondo al codice)
+        This function introduces noise to limit overfitting using additional functions (see code below)
         """
     
         # Inject some noise in train to avoid overfitting  (noise is chance of injection)         
@@ -751,14 +741,10 @@ class SiameseDataset():
     def GenerateCombList_reduced(self, limite_settimane, Train = True):
 
         """
-        Genera anchor, positive e negative. Perchè reduced? Cosa cambia dall'altra sotto? 
+        Generates anchor, positive e negative.
         """
 
         def IterateCombinations(P,N,limite_settimane,train = True):
-
-            """
-            Sottofunzione
-            """
 
             # P is anchor. iterate over L and get one positive and one negative
             
@@ -766,19 +752,17 @@ class SiameseDataset():
             L2 = len(N)#for the "negative" - the other class
 
             if Train:
-                #bilancio
+                # balance
                 L = np.min([L1,L2])
             else:
                 L = L1
 
-            # Inizializzo la lista che salva
+            # Init list which is used to save
             CombList = []
             
-            # Scorro sugli indici della lunghezza della list
+            # Cycle on the index of the lenght of the list
             for i in range(L):
 
-                # Se supero il limite delle settimane o prendo per caso lo stesso segnale, continuo a generare dei segnali nuovi finchè non trovo qualcosa che mi va bene
-            
                 # Positive anchor
                 i_p = random.randint(0,(L1-1)) # Seleziono un indice positivo random nell'array tra 0 e la lunghezza dell'array
                 while (abs(P[i,1] - P[i_p,1]) >= limite_settimane) and (i == i_p):
@@ -789,10 +773,10 @@ class SiameseDataset():
                 while abs(P[i,1] - N[i_n,1]) >= limite_settimane:
                     i_n = random.randint(0,(L2-1))
 
-                # p piccolo è la tripletta finale scelta
+                # lowercase p is the final triplet chosen
                 p = (P[i,0], P[i_p,0], N[i_n,0])
 
-                # Comblist è la lista finale delle triplette
+                # CombList is the final list of triplets
                 CombList.append(p)
 
             return CombList
@@ -802,7 +786,6 @@ class SiameseDataset():
         Class1 = GA_df[GA_df[:,2]==1]
         Class0 = GA_df[GA_df[:,2]==0]
         
-        #there is a chanche it may get stuck (perchè ci sono dei casi troppo distanti e che quindi non ha senso nemmeno confrontare --> il while sopra si blocca)
         Class1 = Class1[Class1[:,1] < (np.max(Class0[:,1]) + limite_settimane), :]  # Remove rows with values greater than (maxP + limite_giorni - 1)
         Class0 = Class0[Class0[:,1] < (np.max(Class1[:,1]) + limite_settimane), :]
         Class1 = Class1[Class1[:,1] > (np.min(Class0[:,1]) - limite_settimane), :]  
@@ -811,7 +794,7 @@ class SiameseDataset():
         np.random.shuffle(Class1)
         np.random.shuffle(Class0)
 
-        CombList = IterateCombinations(Class1,Class0,limite_giorni, train = Train) + IterateCombinations(Class0,Class1,limite_giorni, train = Train) 
+        CombList = IterateCombinations(Class1,Class0, limite_giorni, train = Train) + IterateCombinations(Class0, Class1, limite_giorni, train = Train) 
    
         np.random.shuffle(CombList)
 
@@ -824,12 +807,11 @@ class SiameseDataset():
 
     def GenerateCombList(self, limite_settimane, Balance = False): #DATI_oggetto,scaler, limite_giorni, Dataset, Train = True, limit = np.inf
     
-        #genero lista delle combinazioni
-        #limit serve a imporre un massimo al numero di combinazioni generate
-        #reverse scale back to "normal"
+        # Generate the list of triplet combinations
+        # 'limit' can restrict the maximum number of generated combinations
+        # Reverse scaling back to the original scale if necessary
+        # This is the main function actually used for generating combinations (similar to the other version)
 
-        # Questa è la funzione "vera" che viene chiamata (non quella sopra! Ma il funzionamento è lo stesso)
-        
         #inner function for brevity 
         def CreateList():
 
@@ -840,22 +822,22 @@ class SiameseDataset():
             
             #  ----------------  "anchors" con  i positivi ------------
 
-            #coppie valide con positivi
+            # Couple valid with positive
             CombListP = [[P[i1,1], (P[i1,0], P[i2,0])] 
                         for i1 in range(len(P)) for i2 in range(i1 + 1, len(P)) 
                         if np.abs(P[i1,1] - P[i2,1]) < limite_settimane]
 
-            #aggiungo i negativi (validi)
+            # Add negatives (valid)
             CombList1 = [(*CombListP[i][1], N[j,0]) 
                         for i in range(len(CombListP)) for j in range(len(N)) 
                         if np.abs(CombListP[i][0] - N[j,1]) < limite_settimane]
                 
-            #  ----------------  "anchors" con  i negativi ------------
+            #  ----------------  "anchors" with the negatives ------------
             CombListN = [[N[i1,1], (N[i1,0], N[i2,0])] 
                         for i1 in range(len(N)) for i2 in range(i1 + 1, len(N)) 
                         if np.abs(N[i1,1] - N[i2,1]) < limite_settimane] 
                 
-            #aggiungo i positivi (validi)
+            # Add the positives (valid)
             CombList2 = [(*CombListN[i][1], P[j,0]) 
                         for i in range(len(CombListN)) for j in range(len(P)) 
                         if np.abs(CombListN[i][0] - P[j,1]) < limite_settimane]           
@@ -887,23 +869,23 @@ class SiameseDataset():
 
     def GenerateCoupleList(self, reset_index = True):
         
-        #genero lista delle coppie valide (serve per testare il modello)
+        # Generates the list of valid couples (to test the model)
 
         df = self.Data_frame_orig.copy()
 
         if reset_index:
             df.reset_index(inplace=True)
 
-        #just to be sure, make the index a column
+        # Make the index a column
         df['ID'] = df.index
         
         P = df[df['label']==1] 
         N = df[df['label']==0]
         
-        #coppie PN e NP (lista di tuple)
+        # Couples PN and NP (list of tuples)
         CombListPN = [(P.iloc[i1]['ID'], N.iloc[i2]['ID']) for i1 in range(len(P)) for i2 in range(len(N))]
         
-        #coppie PP e NN (lista di tuple)
+        # Couples PP and NN (list of tuples)
         CombListPP = [(P.iloc[i1]['ID'], P.iloc[i2]['ID']) for i1 in range(len(P)) for i2 in range(i1 + 1, len(P))]
         CombListNN = [(N.iloc[i1]['ID'], N.iloc[i2]['ID']) for i1 in range(len(N)) for i2 in range(i1 + 1, len(N))]
 
@@ -938,6 +920,7 @@ class SiameseDataset():
 # ==========================================================================
 
 def add_noiseFHR(FHR_scaled, noise = 0.1, scala=0.1, factor=0):
+
     
     #chances of injection are "noise"
     if random.random() > noise:

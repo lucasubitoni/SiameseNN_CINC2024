@@ -244,7 +244,6 @@ def Resnet_GA_4(input_shape, input_shapeGA, n_feature_maps,activation, kernels_s
     '''
     Four Blocks Resnet
     INPUT : Signal and Gestational Age (single number)
-    #TODO: check with Federica that the last block is correct
     '''
 
     input_layer = keras.layers.Input(input_shape)
