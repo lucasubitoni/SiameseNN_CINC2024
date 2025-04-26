@@ -11,7 +11,7 @@ Unfortunately, due to privacy regulations, we are not allowed to share the Datas
 ## Citation
 Feel free to use all or part of the code. If you use it for your publication, please cite the original publication as:
 
-G. Steyde, L. Subitoni, E. Spairani, G. Magenes, and M. G. Signorini, "Siamese Neural Networks for IUGR Identification in Cardiotocographic Recordings," Computing in Cardiology, vol. 51, 2024, doi: 10.22489/CinC.2024.280.
+G. Steyde, L. Subitoni, E. Spairani, G. Magenes, and M. G. Signorini, "Siamese Neural Networks for IUGR Identification in Cardiotocographic Recordings," Computing in Cardiology, vol. 51, 2024, doi: 10.22489/CinC.2024.280
 
 ## Contact information:
 If you have questions, suggestions or anything you want to report, contact me at: giulio.steyde_at_polimi.it
