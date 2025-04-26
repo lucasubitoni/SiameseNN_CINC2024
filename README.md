@@ -6,7 +6,7 @@ This repository contains the code used for the paper "Siamese Neural Networks fo
 
 The paper is available at: https://cinc.org/archives/2024/pdf/CinC2024-280.pdf
 
-Unfortunately, due to privacy regulations, we are not allowed to share the Dataset
+Unfortunately, due to privacy regulations, we are not allowed to share the dataset
 
 ## Citation
 Feel free to use all or part of the code. If you use it for your publication, please cite the original publication as:
